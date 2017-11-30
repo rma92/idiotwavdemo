@@ -1,0 +1,4 @@
+#include "playwav.h"
+
+IDI_WAV1 WAVE idiot.wav
+
