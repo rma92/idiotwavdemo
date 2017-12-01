@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <mmsystem.h>
+#include <stdlib.h> //this is needed for atof in the svg drawing.
 #include "playwav.h"
 
 int counter = 0;
@@ -44,6 +45,131 @@ void paint( HWND hWnd, HDC hdc )
   return;
 }
 
+//parse an svg path and draw it.  
+//x and y is the top left corner.
+//scaleX and scaleY are multipliers
+//supports:
+//
+void drawPath( HDC hdc, char * c, int x, int y, float scaleX, float scaleY, int max_str_length )
+{
+  int i; //index of characters.
+  int l_last; //lexer - index of the last character.
+  int tx, ty;
+  int* tokens = calloc( 1024 , sizeof( int ) );
+  //tokens will contain a number for a parameter (which we will & with 0xFFFF - there shouldn't be any numbers larger than that.)  We can multiply by scaleX at this time to do floating math.
+  //commands will contain the char of the command, we will | with 0x00FF0000. 
+  //when its time to parse, see if ( value & 0x00FF0000 ) is true to see if we have command or value.
+  //If the command is longer than 2 characters, only the last two characters will be stored.
+  //  (SVG commands are usually only one letter)
+  int num_tokens = 0;
+  int has_command = 0;
+  int has_value = 0;
+  char temp_char = '\0';
+  float temp_float = 0.0f;
+  int j;//temp variable only for printing.
+
+  //lexer: Iterate over the string, when a space (or comma) is encountered,
+  //  determine if the last token was a command, or a number (only . and numbers).
+  //  if while looking over the word a letter is found, then the word is a command.
+  //  if a number is found then  it is a number.
+  //  when the space is found, it will be stored as appropriate.  If both number
+  //  and letter have been found, it will be treated as a command. (since those
+  //  are whitelisted).
+  for( i = 0, l_last = 0; i < max_str_length; ++i )
+  {
+    if( (has_value | has_command) && (c[i] == ',' || c[i] == ' ' || c[i] == '\0') )
+    {
+      /*
+      //debug printing
+      printf("Found %s:", (has_command)?"command":"value" );
+      
+      for( j = l_last; j < i; ++j )
+      {
+        printf("%c", c[j]);
+      }
+      printf("$\n");
+      //end debug printing
+      */
+
+      /*
+        if there is a letter in this word 2 characters ago,
+          store it,
+          left shift so that it's in the 2nd least significant byte.
+        if i >= 1 (to prevent anything stupid)
+          set the least significant byte to the letter.
+        or with 0xFF0000 and store.
+      */
+      if( has_command )
+      { 
+        j = 0;
+        if( i >= 2 && i - 2 >= l_last )
+        {
+          j |= c[i - 2];
+          j <<= 8;
+        }
+        if( i >= 1 )
+        {
+          j |= c[i - 1];
+        }
+        tokens[ num_tokens ] = 0xFF0000 | j;
+      }
+      /*
+        Temporarily set the character after to null.
+        Call atof on the pointer, arithmaticed to the start of the 
+          number in the string.
+        Round the float, store it in j.
+        Put the altered character back to the original one.
+        add j to the tokens[ num_tokens ]
+      */
+      else if( has_value )
+      {
+        temp_char = c[i];
+        c[i] = '\0';
+        temp_float = atof( c+l_last );
+        j = (int)temp_float;
+        if( temp_float - j >= 0.5 ) ++j;
+        //printf("float = %f\n", temp_float );
+        c[i] = temp_char;
+        tokens[ num_tokens ] = 0xFFFF & j;
+      }
+      
+      l_last = i + 1;
+      has_value = 0;
+      has_command = 0;
+      ++num_tokens;
+    }
+    else if( (c[i] <= '9' && c[i] >= '0' ) || c[i] == '.' )
+    { //needs to be before the letter checking.
+      has_value = 1;
+    }
+    else if( c[i] | 0x20 == 'm' || c[i] | 0x20 == 'l' || c[i] | 0x20 == 'z' )
+    {
+      has_command = 1;
+    }
+    else if( c[i] == '\0' )
+    {
+      break;
+    }
+  }//lexer for loop
+  printf("\n\ntokens:\n");
+  for( i = 0; i < num_tokens; ++i )
+  {
+    if( tokens[ i ] & 0xFF0000 )
+    {
+      printf("cmd: %c%c\n", (tokens[i] & 0xff00) >> 8, tokens[i] & 0xff);
+    }
+    else
+    {
+      printf("val: %d\n", tokens[i]) ;
+    }
+  }
+  printf("\n\n");
+  BeginPath( hdc );
+  MoveToEx( hdc, x, y, 0);
+  EndPath( hdc );
+  free( tokens );
+}
+
 DWORD WINAPI MyThreadFunction( LPVOID lpParam )
 {
   while(1)
@@ -72,6 +198,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       PAINTSTRUCT ps;
       hdc = BeginPaint( hWnd, &ps );
       paint( hWnd, hdc);
+      
+      //an actual drawing
+      drawPath( hdc, "M 100.376 100.9 L 300 100 L 200 300 z", 20, 20, 1.0f, 1.0f, 255);
+      //Testing the lexer.
+      //drawPath( hdc, "M 100.376 100.9 c3 LongCommand 32 L 300 100 L 200 300 z", 20, 20, 1.0f, 1.0f, 255);
       EndPaint( hWnd, &ps );
     }
       break;
@@ -114,7 +245,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
   if(RegisterClass(&wc1) == FALSE) return 0;
   hWnd1 = CreateWindow(AppName, AppName, WS_OVERLAPPEDWINDOW | WS_VISIBLE, 10, 10, 360, 240, 0, 0, hInst, 0);
   if(hWnd1 == NULL) return 0;
-  ShowWindow( hWnd1, SW_MAXIMIZE);
+  ShowWindow( hWnd1, SW_MINIMIZE);
   while(GetMessage(&msg1,NULL,0,0) > 0){
     TranslateMessage(&msg1);
     DispatchMessage(&msg1);
