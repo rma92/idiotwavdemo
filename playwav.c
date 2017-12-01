@@ -53,7 +53,7 @@ void paint( HWND hWnd, HDC hdc )
 //scaleX and scaleY are multipliers
 //supports:
 //
-void drawPath( HDC hdc, char * c, int x, int y, float scaleX, int max_str_length )
+void drawPath( HDC hdc, char * c, int loc_x, int loc_y, float scale, int max_str_length )
 {
   int i; //index of characters.
   int l_last; //lexer - index of the last character.
@@ -131,6 +131,7 @@ void drawPath( HDC hdc, char * c, int x, int y, float scaleX, int max_str_length
         temp_char = c[i];
         c[i] = '\0';
         temp_float = atof( c+l_last );
+        temp_float *= scale;
         j = (int)temp_float;
         if( temp_float - j >= 0.5 ) ++j;
         //printf("float = %f\n", temp_float );
@@ -211,7 +212,7 @@ void drawPath( HDC hdc, char * c, int x, int y, float scaleX, int max_str_length
           printf("MoveTo ABS: %d %d\n", tx, ty);
 #endif DBGPRINT
           BeginPath( hdc );
-          MoveToEx( hdc, tx, ty, 0 );//we don't need to store the old point.
+          MoveToEx( hdc, loc_x + tx, loc_y + ty, 0 );//we don't need to store the old point.
         break;
         case 'L': //line to absolute
           tx = tokens[ ++i ];
@@ -224,14 +225,14 @@ void drawPath( HDC hdc, char * c, int x, int y, float scaleX, int max_str_length
 #ifdef DBGPRINT
           printf("LineTo ABS: %d %d\n", tx, ty);
 #endif DBGPRINT
-          LineTo( hdc, tx, ty );
+          LineTo( hdc, loc_x + tx, loc_y + ty );
           break;
         case 'Z':
         case 'z':
 #ifdef DBGPRINT
           printf("z: %d %d", first_x, first_y );
 #endif DBGPRINT
-          LineTo( hdc, first_x, first_y);
+          LineTo( hdc, loc_x + first_x, loc_y +first_y);
           break;
         default:
           printf("unknown command \"%c\"\n", temp_char );
@@ -281,10 +282,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       hTempBrush = SelectObject( hdc, hPurBrush );
       //drawPath( hdc, "M 100.376 100.9 L 200 60 L 300 100 L 300 300 L 100 300 z", 20, 20, 1.0f, 255);
       drawPath( hdc, "M 608.4,367.9 L 474,3.4 L 400.4,3.4 L 391,170.3 L 255,0 L 83.9,0 L 41.1,8.6 L 24.8,24 L 3.4,50.5 L 0,82.1 L 2.6,109.5 L 14.5,136.9 L 27.4,160.9 L 51.3,181.4 L 72.7,201.1 L 97.5,213 L 86.4,364.5 L 172.8,362.8 L 178,225 L 258.4,225 L 309.7,364.5 L 386.8,364.5 L 338.8,225.9 L 451.8,367.1 L 462.1,367.1 L 468.9,365.3 L 474,217.3 L 531.4,367.9 L 608.4,367.9 L 608.4,367.9",
-                20, 20, 1.0f, 2048);
+                80, 20, 1.5f, 2048);
       SelectObject( hdc, hGreenBrush );
       drawPath( hdc, "M 235,149.5 L 209.4,77.4 L 107.9,77.4 L 88.9,85 L 85.1,96.4 L 87,108.7 L 92.7,121.1 L 103.2,134.3 L 117.4,143.8 L 126.9,147.6 L 235,149.5 L 235,149.5",
-                20, 20, 1.0f, 2048);
+                80, 20, 1.5f, 2048);
       SelectObject( hdc, hTempBrush );
       DeleteObject( hTempBrush );
       
