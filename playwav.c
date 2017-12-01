@@ -246,6 +246,46 @@ void drawPath( HDC hdc, char * c, int loc_x, int loc_y, float scale, int max_str
   free( tokens );
 }
 
+//draws the RM logo to fill the window.
+void drawRMLogo(HWND hWnd, HDC hdc)
+{
+  RECT clientRect;
+  HBRUSH hPurBrush = CreateSolidBrush( RGB(128,0,128) );
+  HBRUSH hGreenBrush = CreateSolidBrush( RGB( 0, 255, 0 ) );
+  HBRUSH hTempBrush;
+  int x = 20;
+  int y = 20;
+  int img_width = 610;
+  int img_height = 368;
+  float client_ratio_width = 1.0f;
+  float client_ratio_height = 1.0f;
+  float client_ratio = 1.2f;
+  GetClientRect( hWnd, &clientRect );
+  
+  client_ratio_width = ((float) clientRect.right)/ (img_width);
+  client_ratio_height = ((float) clientRect.bottom)/ (img_height);
+  //select the minimum
+  if( client_ratio_width > client_ratio_height )
+  {
+    client_ratio = client_ratio_height;
+  }
+  else
+  {
+    client_ratio = client_ratio_width;
+  }
+
+  //TODO: center the image using x and y.
+
+  hTempBrush = SelectObject( hdc, hPurBrush );
+  drawPath( hdc, "M 608.4,367.9 L 474,3.4 L 400.4,3.4 L 391,170.3 L 255,0 L 83.9,0 L 41.1,8.6 L 24.8,24 L 3.4,50.5 L 0,82.1 L 2.6,109.5 L 14.5,136.9 L 27.4,160.9 L 51.3,181.4 L 72.7,201.1 L 97.5,213 L 86.4,364.5 L 172.8,362.8 L 178,225 L 258.4,225 L 309.7,364.5 L 386.8,364.5 L 338.8,225.9 L 451.8,367.1 L 462.1,367.1 L 468.9,365.3 L 474,217.3 L 531.4,367.9 L 608.4,367.9 L 608.4,367.9",
+         x, y, client_ratio + 0.01, 2048);
+  SelectObject( hdc, hGreenBrush );
+  drawPath( hdc, "M 235,149.5 L 209.4,77.4 L 107.9,77.4 L 88.9,85 L 85.1,96.4 L 87,108.7 L 92.7,121.1 L 103.2,134.3 L 117.4,143.8 L 126.9,147.6 L 235,149.5 L 235,149.5",
+            x, y, client_ratio+ 0.01, 2048);
+  SelectObject( hdc, hTempBrush );
+  DeleteObject( hTempBrush );
+}
+
 DWORD WINAPI MyThreadFunction( LPVOID lpParam )
 {
   while(1)
@@ -272,22 +312,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
       HDC hdc;
       PAINTSTRUCT ps;
-      HBRUSH hPurBrush = CreateSolidBrush( RGB(128,0,128) );
-      HBRUSH hGreenBrush = CreateSolidBrush( RGB( 0, 255, 0 ) );
-      HBRUSH hTempBrush;
+
+ 
       hdc = BeginPaint( hWnd, &ps );
-      paint( hWnd, hdc);
+      paint( hWnd, hdc );
       
+      drawRMLogo( hWnd, hdc );
       //an actual drawing
-      hTempBrush = SelectObject( hdc, hPurBrush );
       //drawPath( hdc, "M 100.376 100.9 L 200 60 L 300 100 L 300 300 L 100 300 z", 20, 20, 1.0f, 255);
-      drawPath( hdc, "M 608.4,367.9 L 474,3.4 L 400.4,3.4 L 391,170.3 L 255,0 L 83.9,0 L 41.1,8.6 L 24.8,24 L 3.4,50.5 L 0,82.1 L 2.6,109.5 L 14.5,136.9 L 27.4,160.9 L 51.3,181.4 L 72.7,201.1 L 97.5,213 L 86.4,364.5 L 172.8,362.8 L 178,225 L 258.4,225 L 309.7,364.5 L 386.8,364.5 L 338.8,225.9 L 451.8,367.1 L 462.1,367.1 L 468.9,365.3 L 474,217.3 L 531.4,367.9 L 608.4,367.9 L 608.4,367.9",
-                80, 20, 1.5f, 2048);
-      SelectObject( hdc, hGreenBrush );
-      drawPath( hdc, "M 235,149.5 L 209.4,77.4 L 107.9,77.4 L 88.9,85 L 85.1,96.4 L 87,108.7 L 92.7,121.1 L 103.2,134.3 L 117.4,143.8 L 126.9,147.6 L 235,149.5 L 235,149.5",
-                80, 20, 1.5f, 2048);
-      SelectObject( hdc, hTempBrush );
-      DeleteObject( hTempBrush );
       
       //Testing the lexer.
       //drawPath( hdc, "M 100.376 100.9 c3 LongCommand 32 L 300 100 L 200 300 z", 20, 20, 1.0f, 1.0f, 255);
