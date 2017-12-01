@@ -66,6 +66,8 @@ void drawPath( HDC hdc, char * c, int x, int y, float scaleX, float scaleY, int 
   int has_value = 0;
   char temp_char = '\0';
   float temp_float = 0.0f;
+  int first_x = -1;
+  int first_y = -1;
   int j;//temp variable only for printing.
 
   //lexer: Iterate over the string, when a space (or comma) is encountered,
@@ -151,6 +153,8 @@ void drawPath( HDC hdc, char * c, int x, int y, float scaleX, float scaleY, int 
       break;
     }
   }//lexer for loop
+
+  //Debug printing tokens:
   printf("\n\ntokens:\n");
   for( i = 0; i < num_tokens; ++i )
   {
@@ -164,9 +168,69 @@ void drawPath( HDC hdc, char * c, int x, int y, float scaleX, float scaleY, int 
     }
   }
   printf("\n\n");
+
+
+  //Drawing
+  //Reset variables
+  i = 0;
+  j = 0;
+  tx = 0;
+  ty = 0;
+
+  temp_char = 0;//will hold command
+ 
   BeginPath( hdc );
-  MoveToEx( hdc, x, y, 0);
+  //TODO: finish Z, relative movements,
+  //   and set up x and y adjust and scale.
+  //MoveToEx( hdc, x, y, 0);
+  
+  for( i = 0; i < num_tokens; ++i )
+  {
+    if( tokens[ i ] & 0xFF0000 )  //if is command?
+    {
+      temp_char = tokens[ i ] & 0xFF;
+      printf("command:%c\n", temp_char);
+      switch( temp_char )
+      {
+        case 'M': //move to absolute
+          tx = tokens[ ++i ];
+          ty = tokens[ ++i ];
+          if( i >= num_tokens )
+          {
+            printf("error: wrong number of parameters!\n");
+            return;
+          }
+          if( first_x < 0 && first_y < 0 )
+          {
+            first_x = tx;
+            first_y = ty;
+          }
+          printf("MoveTo ABS: %d %d\n", tx, ty);
+          MoveToEx( hdc, x, y, 0 );//we don't need to store the old point.
+        break;
+        case 'L': //line to absolute
+          tx = tokens[ ++i ];
+          ty = tokens[ ++i ];
+          if( i >= num_tokens )
+          {
+            printf("error: wrong number of parameters!\n");
+            return;
+          }
+          printf("LineTo ABS: %d %d\n", tx, ty);
+          LineTo( hdc, tx, ty );
+          break;
+        case 'Z':
+        case 'z':
+          LineTo( hdc, first_x, first_y);
+          break;
+        default:
+          printf("unknown command \"%c\"\n", temp_char );
+      }
+    }
+  }
+
   EndPath( hdc );
+  FillPath( hdc );
   free( tokens );
 }
 
