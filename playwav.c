@@ -44,16 +44,43 @@ void paint( HWND hWnd, HDC hdc )
   return;
 }
 
+//Thread function for the audio thread.
 DWORD WINAPI MyThreadFunction( LPVOID lpParam )
 {
-  while(1)
+  //PlaySound(MAKEINTRESOURCE(IDI_WAV1), GetModuleHandle(NULL), SND_RESOURCE);
+  LPSTR lpRes;
+  HANDLE hResInfo, hRes;
+  HINSTANCE hInst = GetModuleHandle( NULL );
+  hResInfo = FindResource( hInst, MAKEINTRESOURCE(IDI_WAV1), "WAVE");
+  if( hResInfo == NULL )
   {
-    PlaySound(
-      MAKEINTRESOURCE(IDI_WAV1), 
-      GetModuleHandle(NULL),  
-      SND_RESOURCE);
-    Sleep(500);
+    printf("no load resource");
+    return FALSE;
   }
+  hRes = LoadResource( hInst, hResInfo );
+  if( hRes == NULL )
+  {
+    return FALSE;
+  }
+  //Lock the WAVE resource and play it.
+  lpRes = LockResource( hRes );
+  if( lpRes != NULL )
+  {
+    while(1)
+    {
+      PlaySound( lpRes, 
+        hInst,
+        SND_MEMORY | SND_SYNC);
+      Sleep(500);
+    }
+    UnlockResource( hRes );
+  }
+  else
+  {
+    printf("failed to lock resource");
+  }
+  FreeResource( hRes );
+    
   return 0;
 }
 
@@ -98,6 +125,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
   }
   return 0;
 }
+
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
 {
   MSG msg1;
